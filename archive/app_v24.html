@@ -1,0 +1,1639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Annotation Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+        }
+
+        button {
+            padding: 8px 15px;
+            margin: 5px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        button.cancel {
+            background: #dc3545;
+        }
+
+        button.cancel:hover {
+            background: #c82333;
+        }
+
+        button.confirm {
+            background: #28a745;
+        }
+
+        button.confirm:hover {
+            background: #218838;
+        }
+
+        input[type="file"] {
+            margin: 10px 0;
+        }
+
+        input[type="text"], input[type="number"] {
+            padding: 5px;
+            margin: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #fileInfo {
+            background: #f8f9fa;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #dee2e6;
+        }
+
+        .csv-preview {
+            overflow: auto;
+            max-height: 400px;
+            border: 1px solid #ddd;
+            margin: 10px 0;
+            position: relative;
+        }
+        
+        .csv-preview.fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            max-height: 100%;
+            z-index: 999;
+            background: white;
+            padding: 20px;
+        }
+        
+        .fullscreen-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            z-index: 10;
+        }
+        
+        .exit-fullscreen {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 10px 20px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            cursor: pointer;
+            z-index: 1000;
+        }
+        
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            margin-top: 10px;
+        }
+        
+        .pagination-controls button {
+            padding: 5px 15px;
+        }
+        
+        .pagination-controls button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .page-info {
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .page-jump {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .page-jump input {
+            width: 60px;
+            padding: 5px;
+            text-align: center;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: auto;
+            font-size: 12px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 2px 4px;
+            text-align: left;
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
+        }
+        
+        td:hover, td.expanded {
+            white-space: normal;
+            word-wrap: break-word;
+            max-width: 300px;
+            z-index: 1;
+            position: relative;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        th {
+            background: #f2f2f2;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        tr:hover {
+            background: #f5f5f5;
+        }
+
+        tr.selected {
+            background: #cce5ff;
+        }
+
+        td.selected {
+            background: #fff3cd;
+        }
+
+        .tag-section {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border: 2px solid #333;
+            padding: 15px;
+            z-index: 100;
+            max-width: 300px;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 5px;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .tag.selected {
+            border-color: #000;
+        }
+
+        .tag-list {
+            margin: 10px 0;
+        }
+
+        #annotationView {
+            margin: 20px 0;
+        }
+
+        .annotated-text {
+            display: inline;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .annotated-text:hover::after {
+            content: attr(data-tag);
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            background: #333;
+            color: white;
+            padding: 2px 6px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 100;
+        }
+        
+        .annotatable-cell {
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+        }
+
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        #selectedData {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 15px 0;
+            border: 1px solid #dee2e6;
+            max-height: 300px;
+            overflow: auto;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            margin: 50px auto;
+            padding: 20px;
+            width: 80%;
+            max-width: 500px;
+        }
+
+        .close {
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: red;
+        }
+
+        .progress {
+            width: 100%;
+            height: 20px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            margin: 10px 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: #007bff;
+            width: 0%;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CSV Annotation Tool</h1>
+        
+        <!-- File Upload Section -->
+        <div class="section" id="uploadSection">
+            <h2>Step 1: Upload CSV File</h2>
+            <input type="file" id="fileInput" accept=".csv">
+            <div id="fileInfo" class="hidden"></div>
+            <div class="progress hidden" id="uploadProgress">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+        </div>
+
+        <!-- Data Selection Section -->
+        <div class="section hidden" id="selectionSection">
+            <h2>Step 2: Select Data to Annotate</h2>
+            <div>
+                <label>Selection Mode:</label>
+                <button onclick="setMode('rows')">Select Rows</button>
+                <button onclick="setMode('columns')">Select Columns</button>
+                <button onclick="setMode('cells')">Select Cells</button>
+                <button onclick="setMode('range')">Select Range</button>
+            </div>
+            
+            <div id="rangeInputs" class="hidden">
+                <h3>Enter Range:</h3>
+                <div style="margin: 10px 0;">
+                    <label>Row Range:</label><br>
+                    <label>Start Row: <input type="number" id="startRow" min="1" style="width: 80px;"></label>
+                    <label>End Row: <input type="number" id="endRow" min="1" style="width: 80px;"></label>
+                </div>
+                <div style="margin: 10px 0;">
+                    <label>Column Range (leave empty for all columns):</label><br>
+                    <label>Start Column (letter or number): <input type="text" id="startCol" placeholder="e.g., A or 0" style="width: 80px;"></label>
+                    <label>End Column: <input type="text" id="endCol" placeholder="e.g., Z or 25" style="width: 80px;"></label>
+                </div>
+                <button onclick="applyRange()">Apply Range</button>
+            </div>
+
+            <div class="csv-preview" id="csvPreview"></div>
+            
+            <div>
+                <button class="confirm" onclick="confirmSelection()">Confirm Selection</button>
+                <button class="cancel" onclick="cancelSelection()">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Selected Data Review -->
+        <div class="section hidden" id="reviewSection">
+            <h2>Step 3: Review Selected Data</h2>
+            <div id="selectedData"></div>
+            <div>
+                <button class="confirm" onclick="proceedToAnnotation()">Proceed to Annotation</button>
+                <button class="cancel" onclick="backToSelection()">Back to Selection</button>
+            </div>
+        </div>
+
+        <!-- Annotation Section -->
+        <div class="section hidden" id="annotationSection">
+            <h2>Step 4: Annotate Data</h2>
+            <p>Select a tag from the tag panel, then click on cells/text to annotate</p>
+            <div id="annotationView"></div>
+            <div>
+                <button class="confirm" onclick="saveAnnotations()">Save Annotations</button>
+                <button onclick="clearAnnotations()">Clear All</button>
+            </div>
+        </div>
+
+        <!-- Export Section -->
+        <div class="section hidden" id="exportSection">
+            <h2>Step 5: Export Annotated Data</h2>
+            <div>
+                <button onclick="exportJSON()">Export as JSON</button>
+                <button onclick="exportCSV()">Export as CSV</button>
+                <button onclick="exportAnnotationsOnly()">Export Annotations Only</button>
+                <button onclick="startOver()">Start New File</button>
+            </div>
+            <div id="exportStatus"></div>
+        </div>
+    </div>
+
+    <!-- Tag Management Panel -->
+    <div class="tag-section hidden" id="tagPanel">
+        <h3>Tags</h3>
+        <button onclick="openTagModal()">Create Tag</button>
+        <div class="tag-list" id="tagList"></div>
+    </div>
+
+    <!-- Tag Creation Modal -->
+    <div class="modal" id="tagModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeTagModal()">&times;</span>
+            <h3>Create New Tag</h3>
+            <div>
+                <label>Tag Name: <input type="text" id="tagName"></label><br>
+                <label>Color: <input type="color" id="tagColor" value="#ff0000"></label><br>
+                <button onclick="createTag()">Create</button>
+            </div>
+            <div id="existingTags"></div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let csvData = [];
+        let headers = [];
+        let selectedData = [];
+        let selectedIndices = [];
+        let currentMode = null;
+        let tags = [];
+        let selectedTag = null;
+        let annotations = {};
+        let fileSize = 0;
+        let chunkSize = 1000; // Process 1000 rows at a time for large files
+        let currentPage = 1;
+        let rowsPerPage = 100;
+        let totalPages = 1;
+
+        // File handling
+        document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            fileSize = file.size;
+            const fileInfo = document.getElementById('fileInfo');
+            fileInfo.innerHTML = `
+                <strong>File:</strong> ${file.name}<br>
+                <strong>Size:</strong> ${(fileSize / 1024 / 1024).toFixed(2)} MB<br>
+                <strong>Type:</strong> ${file.type || 'CSV'}
+            `;
+            fileInfo.classList.remove('hidden');
+
+            // Show progress for large files
+            if (fileSize > 1024 * 1024) { // > 1MB
+                document.getElementById('uploadProgress').classList.remove('hidden');
+            }
+
+            const reader = new FileReader();
+            
+            // For very large files, we'll read in chunks
+            if (fileSize > 50 * 1024 * 1024) { // > 50MB
+                readLargeFile(file);
+            } else {
+                reader.onload = function(event) {
+                    parseCSV(event.target.result);
+                    document.getElementById('selectionSection').classList.remove('hidden');
+                    document.getElementById('tagPanel').classList.remove('hidden');
+                    initializeTags();
+                    attachSelectionListeners();
+                };
+                reader.onerror = function(error) {
+                    console.error('Error reading file:', error);
+                    alert('Error reading file. Please try again.');
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function readLargeFile(file) {
+            const chunkSize = 1024 * 1024; // 1MB chunks
+            let offset = 0;
+            let results = '';
+            let partialLine = ''; // Handle lines split across chunks
+            
+            const readChunk = () => {
+                const reader = new FileReader();
+                const blob = file.slice(offset, Math.min(offset + chunkSize, file.size));
+                
+                reader.onload = function(e) {
+                    let chunkText = e.target.result;
+                    
+                    // Handle partial lines from previous chunk
+                    if (partialLine) {
+                        chunkText = partialLine + chunkText;
+                        partialLine = '';
+                    }
+                    
+                    // Check if chunk ends mid-line
+                    if (offset + chunkSize < file.size) {
+                        const lastNewline = chunkText.lastIndexOf('\n');
+                        if (lastNewline !== -1) {
+                            partialLine = chunkText.substring(lastNewline + 1);
+                            chunkText = chunkText.substring(0, lastNewline);
+                        }
+                    }
+                    
+                    results += chunkText;
+                    offset += chunkSize;
+                    
+                    const progress = Math.min(100, (offset / fileSize) * 100);
+                    document.getElementById('progressBar').style.width = progress + '%';
+                    
+                    if (offset < fileSize) {
+                        setTimeout(readChunk, 0); // Use setTimeout to prevent stack overflow
+                    } else {
+                        // Add any remaining partial line
+                        if (partialLine) {
+                            results += partialLine;
+                        }
+                        parseCSV(results);
+                        document.getElementById('selectionSection').classList.remove('hidden');
+                        document.getElementById('tagPanel').classList.remove('hidden');
+                        document.getElementById('uploadProgress').classList.add('hidden');
+                        initializeTags();
+                        attachSelectionListeners();
+                    }
+                };
+                
+                reader.onerror = function(error) {
+                    console.error('Error reading chunk:', error);
+                    alert('Error reading large file. Please try again.');
+                };
+                
+                reader.readAsText(blob);
+            };
+            
+            readChunk();
+        }
+
+        function parseCSV(text) {
+            if (!text || text.trim() === '') {
+                alert('The CSV file appears to be empty');
+                return;
+            }
+            
+            const lines = text.split(/\r?\n/).filter(line => line.length > 0);
+            if (lines.length === 0) {
+                alert('No data found in CSV file');
+                return;
+            }
+
+            // Parse headers
+            headers = parseCSVLine(lines[0]);
+            if (!headers || headers.length === 0) {
+                alert('Invalid CSV format: no headers found');
+                return;
+            }
+            
+            console.log(`Found ${headers.length} columns: ${headers.join(', ')}`);
+            
+            // Parse data rows
+            csvData = [];
+            for (let i = 1; i < lines.length; i++) {
+                const row = parseCSVLine(lines[i]);
+                // Only add rows that have at least one non-empty value
+                if (row && row.length > 0 && row.some(cell => cell !== '')) {
+                    // Ensure row has same number of columns as headers
+                    while (row.length < headers.length) {
+                        row.push('');
+                    }
+                    // Trim to header length if too long
+                    if (row.length > headers.length) {
+                        row.length = headers.length;
+                    }
+                    csvData.push(row);
+                }
+            }
+
+            if (csvData.length === 0) {
+                alert('No data rows found in CSV file');
+                return;
+            }
+
+            console.log(`Parsed ${csvData.length} rows with ${headers.length} columns`);
+            
+            // Reset to first page when loading new file
+            currentPage = 1;
+            totalPages = Math.ceil(csvData.length / rowsPerPage);
+            
+            displayPreview();
+            attachSelectionListeners();
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                const nextChar = line[i + 1];
+                
+                if (char === '"') {
+                    if (inQuotes && nextChar === '"') {
+                        current += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            
+            result.push(current.trim());
+            return result;
+        }
+
+        function displayPreview() {
+            const preview = document.getElementById('csvPreview');
+            
+            // Calculate pagination
+            totalPages = Math.ceil(csvData.length / rowsPerPage);
+            const startRow = (currentPage - 1) * rowsPerPage;
+            const endRow = Math.min(startRow + rowsPerPage, csvData.length);
+            
+            // Add fullscreen toggle button
+            let html = '<button class="fullscreen-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>';
+            
+            html += '<table><thead><tr>';
+            
+            // Add row number column
+            html += '<th style="background: #ddd; position: sticky; left: 0; z-index: 11;">#</th>';
+            
+            // Headers
+            headers.forEach((header, index) => {
+                const displayHeader = header.length > 20 ? header.substring(0, 20) + '...' : header;
+                html += `<th data-col="${index}" style="cursor: pointer;" title="${escapeHtml(header)}">${escapeHtml(displayHeader)}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            // Data rows for current page
+            for (let i = startRow; i < endRow; i++) {
+                html += `<tr data-row="${i}">`;
+                html += `<td style="background: #f5f5f5; font-weight: bold; position: sticky; left: 0; z-index: 1;">${i + 1}</td>`;
+                
+                if (csvData[i]) {
+                    csvData[i].forEach((cell, j) => {
+                        const cellValue = cell || '';
+                        const displayValue = cellValue.length > 30 ? cellValue.substring(0, 30) + '...' : cellValue;
+                        html += `<td data-row="${i}" data-col="${j}" title="${escapeHtml(cellValue)}">${escapeHtml(displayValue)}</td>`;
+                    });
+                }
+                html += '</tr>';
+            }
+            
+            html += '</tbody></table>';
+            
+            // Add pagination controls
+            html += `
+                <div class="pagination-controls">
+                    <button onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>← Previous</button>
+                    <div class="page-info">
+                        Showing rows ${startRow + 1}-${endRow} of ${csvData.length}
+                    </div>
+                    <div class="page-jump">
+                        <label>Page:</label>
+                        <input type="number" id="pageInput" value="${currentPage}" min="1" max="${totalPages}" onchange="jumpToPage()">
+                        <span>of ${totalPages}</span>
+                    </div>
+                    <button onclick="changePage(1)" ${currentPage === totalPages ? 'disabled' : ''}>Next →</button>
+                </div>
+            `;
+            
+            preview.innerHTML = html;
+        }
+        
+        function changePage(direction) {
+            const newPage = currentPage + direction;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                displayPreview();
+                attachSelectionListeners();
+            }
+        }
+        
+        function jumpToPage() {
+            const pageInput = document.getElementById('pageInput');
+            const page = parseInt(pageInput.value);
+            
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                displayPreview();
+                attachSelectionListeners();
+            } else {
+                pageInput.value = currentPage;
+                alert(`Please enter a page number between 1 and ${totalPages}`);
+            }
+        }
+        
+        function toggleFullscreen() {
+            const preview = document.getElementById('csvPreview');
+            const btn = preview.querySelector('.fullscreen-btn');
+            
+            if (preview.classList.contains('fullscreen')) {
+                preview.classList.remove('fullscreen');
+                btn.textContent = '⛶ Fullscreen';
+                btn.classList.remove('exit-fullscreen');
+            } else {
+                preview.classList.add('fullscreen');
+                btn.textContent = '✕ Exit Fullscreen';
+                btn.classList.add('exit-fullscreen');
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function attachSelectionListeners() {
+            const preview = document.getElementById('csvPreview');
+            if (!preview) return;
+            
+            const cells = preview.querySelectorAll('td:not(:first-child)'); // Exclude row number cells
+            const rows = preview.querySelectorAll('tbody tr');
+            const headers = preview.querySelectorAll('th[data-col]');
+            
+            // Clear previous listeners
+            cells.forEach(cell => {
+                cell.onclick = null;
+                cell.style.cursor = 'default';
+            });
+            rows.forEach(row => {
+                row.onclick = null;
+                row.style.cursor = 'default';
+            });
+            headers.forEach(header => {
+                header.onclick = null;
+            });
+            
+            if (currentMode === 'cells') {
+                cells.forEach(cell => {
+                    if (cell.dataset.row !== undefined && cell.dataset.col !== undefined) {
+                        cell.style.cursor = 'pointer';
+                        cell.onclick = function(e) {
+                            e.stopPropagation();
+                            this.classList.toggle('selected');
+                        };
+                    }
+                });
+            } else if (currentMode === 'rows') {
+                rows.forEach(row => {
+                    row.style.cursor = 'pointer';
+                    row.onclick = function(e) {
+                        if (e.target.tagName === 'TD' || e.target.tagName === 'TR') {
+                            this.classList.toggle('selected');
+                            // Also highlight all cells in the row
+                            const cells = this.querySelectorAll('td');
+                            cells.forEach(cell => {
+                                if (this.classList.contains('selected')) {
+                                    cell.classList.add('selected');
+                                } else {
+                                    cell.classList.remove('selected');
+                                }
+                            });
+                            
+                            const rowIndex = parseInt(this.dataset.row);
+                            if (this.classList.contains('selected')) {
+                                if (!selectedIndices.includes(rowIndex)) {
+                                    selectedIndices.push(rowIndex);
+                                }
+                            } else {
+                                selectedIndices = selectedIndices.filter(i => i !== rowIndex);
+                            }
+                        }
+                    };
+                });
+            } else if (currentMode === 'columns') {
+                headers.forEach(header => {
+                    header.style.cursor = 'pointer';
+                    header.style.userSelect = 'none';
+                    header.onclick = function(e) {
+                        e.stopPropagation();
+                        const colIndex = parseInt(this.dataset.col);
+                        const columnCells = preview.querySelectorAll(`td[data-col="${colIndex}"]`);
+                        const isSelected = this.classList.contains('selected');
+                        
+                        if (isSelected) {
+                            this.classList.remove('selected');
+                            this.style.background = '#f2f2f2';
+                            columnCells.forEach(cell => cell.classList.remove('selected'));
+                        } else {
+                            this.classList.add('selected');
+                            this.style.background = '#cce5ff';
+                            columnCells.forEach(cell => cell.classList.add('selected'));
+                        }
+                    };
+                });
+            }
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            selectedIndices = [];
+            
+            // Clear all selections
+            document.querySelectorAll('.selected').forEach(el => {
+                el.classList.remove('selected');
+                if (el.tagName === 'TH') {
+                    el.style.background = '#f2f2f2';
+                }
+            });
+            
+            // Update button states
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(btn => {
+                if (btn.textContent.includes('Select')) {
+                    btn.style.background = '#007bff';
+                }
+            });
+            
+            // Highlight active button
+            if (event && event.target) {
+                event.target.style.background = '#0056b3';
+            }
+            
+            if (mode === 'range') {
+                document.getElementById('rangeInputs').classList.remove('hidden');
+            } else {
+                document.getElementById('rangeInputs').classList.add('hidden');
+                attachSelectionListeners();
+            }
+        }
+
+        function applyRange() {
+            const startRow = parseInt(document.getElementById('startRow').value) - 1;
+            const endRow = parseInt(document.getElementById('endRow').value) - 1;
+            const startColInput = document.getElementById('startCol').value.trim();
+            const endColInput = document.getElementById('endCol').value.trim();
+            
+            if (isNaN(startRow) || isNaN(endRow) || startRow < 0 || endRow < 0) {
+                alert('Please enter valid row numbers');
+                return;
+            }
+            
+            if (endRow < startRow) {
+                alert('End row must be greater than or equal to start row');
+                return;
+            }
+            
+            // Clear previous selections
+            document.querySelectorAll('.selected').forEach(el => {
+                el.classList.remove('selected');
+                if (el.tagName === 'TH') {
+                    el.style.background = '#f2f2f2';
+                }
+            });
+            
+            // Parse column range
+            let startCol = 0;
+            let endCol = headers.length - 1;
+            
+            if (startColInput) {
+                if (isNaN(startColInput)) {
+                    // Convert letter to number (A=0, B=1, etc.)
+                    startCol = startColInput.toUpperCase().charCodeAt(0) - 65;
+                } else {
+                    startCol = parseInt(startColInput);
+                }
+            }
+            
+            if (endColInput) {
+                if (isNaN(endColInput)) {
+                    // Convert letter to number
+                    endCol = endColInput.toUpperCase().charCodeAt(0) - 65;
+                } else {
+                    endCol = parseInt(endColInput);
+                }
+            }
+            
+            if (startCol < 0 || endCol >= headers.length || endCol < startCol) {
+                alert('Invalid column range. Columns should be between A (or 0) and ' + 
+                      String.fromCharCode(65 + headers.length - 1) + ' (or ' + (headers.length - 1) + ')');
+                return;
+            }
+            
+            // Select the range
+            let selectedCount = 0;
+            for (let i = startRow; i <= endRow && i < csvData.length; i++) {
+                const row = document.querySelector(`tr[data-row="${i}"]`);
+                if (row) {
+                    // Select cells in the specified column range
+                    for (let j = startCol; j <= endCol; j++) {
+                        const cell = row.querySelector(`td[data-col="${j}"]`);
+                        if (cell) {
+                            cell.classList.add('selected');
+                            selectedCount++;
+                        }
+                    }
+                    
+                    // If selecting entire rows (all columns)
+                    if (startCol === 0 && endCol === headers.length - 1) {
+                        row.classList.add('selected');
+                    }
+                }
+            }
+            
+            // Also highlight column headers if selecting entire columns
+            if (startRow === 0 && endRow >= csvData.length - 1) {
+                for (let j = startCol; j <= endCol; j++) {
+                    const header = document.querySelector(`th[data-col="${j}"]`);
+                    if (header) {
+                        header.classList.add('selected');
+                        header.style.background = '#cce5ff';
+                    }
+                }
+            }
+            
+            if (selectedCount > 0) {
+                alert(`Selected ${selectedCount} cells in range: Rows ${startRow + 1}-${endRow + 1}, Columns ${String.fromCharCode(65 + startCol)}-${String.fromCharCode(65 + endCol)}`);
+            } else {
+                alert('No cells found in the specified range');
+            }
+        }
+
+        function confirmSelection() {
+            selectedData = [];
+            
+            if (currentMode === 'rows') {
+                const selectedRows = document.querySelectorAll('tr.selected');
+                if (selectedRows.length === 0) {
+                    alert('Please select at least one row');
+                    return;
+                }
+                
+                selectedRows.forEach(row => {
+                    const rowIndex = parseInt(row.dataset.row);
+                    if (!isNaN(rowIndex) && csvData[rowIndex]) {
+                        selectedData.push({
+                            index: rowIndex,
+                            data: csvData[rowIndex]
+                        });
+                    }
+                });
+            } else if (currentMode === 'cells' || currentMode === 'range') {
+                const selectedCells = document.querySelectorAll('td.selected[data-row][data-col]');
+                if (selectedCells.length === 0) {
+                    alert('Please select at least one cell');
+                    return;
+                }
+                
+                selectedCells.forEach(cell => {
+                    const rowIndex = parseInt(cell.dataset.row);
+                    const colIndex = parseInt(cell.dataset.col);
+                    if (!isNaN(rowIndex) && !isNaN(colIndex)) {
+                        selectedData.push({
+                            row: rowIndex,
+                            col: colIndex,
+                            value: csvData[rowIndex] ? csvData[rowIndex][colIndex] : '',
+                            header: headers[colIndex]
+                        });
+                    }
+                });
+            } else if (currentMode === 'columns') {
+                const selectedHeaders = document.querySelectorAll('th.selected[data-col]');
+                if (selectedHeaders.length === 0) {
+                    alert('Please select at least one column');
+                    return;
+                }
+                
+                const columnData = {};
+                selectedHeaders.forEach(header => {
+                    const colIndex = parseInt(header.dataset.col);
+                    if (!isNaN(colIndex)) {
+                        columnData[colIndex] = {
+                            header: headers[colIndex],
+                            values: []
+                        };
+                        
+                        // Collect all values from this column
+                        csvData.forEach(row => {
+                            if (row[colIndex] !== undefined) {
+                                columnData[colIndex].values.push(row[colIndex]);
+                            }
+                        });
+                    }
+                });
+                selectedData = Object.values(columnData);
+            } else {
+                alert('Please select a mode first (Rows, Columns, Cells, or Range)');
+                return;
+            }
+            
+            if (selectedData.length === 0) {
+                alert('No data was selected. Please make a selection first.');
+                return;
+            }
+            
+            displaySelectedData();
+            document.getElementById('selectionSection').classList.add('hidden');
+            document.getElementById('reviewSection').classList.remove('hidden');
+        }
+
+        function displaySelectedData() {
+            const display = document.getElementById('selectedData');
+            let html = '<h3>Selected Data:</h3>';
+            
+            if (currentMode === 'rows') {
+                html += '<table><tr>';
+                headers.forEach(h => html += `<th>${h}</th>`);
+                html += '</tr>';
+                selectedData.forEach(item => {
+                    html += '<tr>';
+                    item.data.forEach(cell => html += `<td>${escapeHtml(cell)}</td>`);
+                    html += '</tr>';
+                });
+                html += '</table>';
+            } else if (currentMode === 'cells' || currentMode === 'range') {
+                html += '<ul>';
+                selectedData.forEach(item => {
+                    html += `<li><strong>${item.header}[${item.row}]:</strong> ${escapeHtml(item.value)}</li>`;
+                });
+                html += '</ul>';
+            } else if (currentMode === 'columns') {
+                selectedData.forEach(col => {
+                    html += `<h4>${col.header}</h4>`;
+                    html += `<p>Values: ${col.values.slice(0, 10).join(', ')}`;
+                    if (col.values.length > 10) {
+                        html += ` ... (${col.values.length - 10} more)`;
+                    }
+                    html += '</p>';
+                });
+            }
+            
+            display.innerHTML = html;
+        }
+
+        function cancelSelection() {
+            document.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+            selectedData = [];
+            selectedIndices = [];
+        }
+
+        function backToSelection() {
+            document.getElementById('reviewSection').classList.add('hidden');
+            document.getElementById('selectionSection').classList.remove('hidden');
+        }
+
+        function proceedToAnnotation() {
+            document.getElementById('reviewSection').classList.add('hidden');
+            document.getElementById('annotationSection').classList.remove('hidden');
+            displayAnnotationView();
+        }
+
+        function displayAnnotationView() {
+            const view = document.getElementById('annotationView');
+            let html = '<div style="font-size: 11px;">';
+            
+            // Always display as table for CSV format
+            html += '<table style="border-collapse: collapse;"><thead><tr>';
+            
+            // Add row number header
+            html += '<th style="background: #ddd; padding: 2px 4px; border: 1px solid #ccc; position: sticky; left: 0; z-index: 11;">#</th>';
+            
+            // Add column headers
+            headers.forEach((header, idx) => {
+                const displayHeader = header.length > 20 ? header.substring(0, 20) + '...' : header;
+                html += `<th style="padding: 2px 4px; border: 1px solid #ccc; background: #f2f2f2;" title="${escapeHtml(header)}">${escapeHtml(displayHeader)}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            // Add data rows based on selection mode
+            if (currentMode === 'rows') {
+                selectedData.forEach((item, idx) => {
+                    html += `<tr>`;
+                    html += `<td style="background: #f5f5f5; font-weight: bold; padding: 2px 4px; border: 1px solid #ccc; position: sticky; left: 0;">${item.index + 1}</td>`;
+                    item.data.forEach((cell, cellIdx) => {
+                        // Make cell content selectable for text annotation
+                        html += `<td style="padding: 2px 4px; border: 1px solid #ccc;">
+                                   <div class="annotatable-cell" 
+                                        data-row-index="${idx}" 
+                                        data-cell-index="${cellIdx}" 
+                                        contenteditable="false"
+                                        style="min-height: 16px; cursor: text;"
+                                        onmouseup="handleTextSelection(event, ${idx}, ${cellIdx})">${escapeHtml(cell || '')}</div>
+                                 </td>`;
+                    });
+                    html += '</tr>';
+                });
+            } else if (currentMode === 'cells' || currentMode === 'range') {
+                // Group cells by row for better display
+                const rowMap = {};
+                selectedData.forEach(item => {
+                    if (!rowMap[item.row]) {
+                        rowMap[item.row] = {};
+                    }
+                    rowMap[item.row][item.col] = item.value;
+                });
+                
+                // Display each row that has selected cells
+                Object.keys(rowMap).sort((a, b) => parseInt(a) - parseInt(b)).forEach(rowIdx => {
+                    html += '<tr>';
+                    html += `<td style="background: #f5f5f5; font-weight: bold; padding: 2px 4px; border: 1px solid #ccc;">${parseInt(rowIdx) + 1}</td>`;
+                    
+                    for (let colIdx = 0; colIdx < headers.length; colIdx++) {
+                        const value = rowMap[rowIdx][colIdx];
+                        if (value !== undefined) {
+                            html += `<td style="padding: 2px 4px; border: 1px solid #ccc; background: #fffbea;">
+                                       <div class="annotatable-cell" 
+                                            data-row-index="${rowIdx}" 
+                                            data-cell-index="${colIdx}"
+                                            contenteditable="false"
+                                            style="min-height: 16px; cursor: text;"
+                                            onmouseup="handleTextSelection(event, ${rowIdx}, ${colIdx})">${escapeHtml(value || '')}</div>
+                                     </td>`;
+                        } else {
+                            html += `<td style="padding: 2px 4px; border: 1px solid #ccc; color: #ccc;">-</td>`;
+                        }
+                    }
+                    html += '</tr>';
+                });
+            } else if (currentMode === 'columns') {
+                // Display all rows but only show selected columns
+                const selectedCols = {};
+                selectedData.forEach(col => {
+                    const colIdx = headers.indexOf(col.header);
+                    if (colIdx !== -1) {
+                        selectedCols[colIdx] = true;
+                    }
+                });
+                
+                // Show first 100 rows with selected columns
+                const maxRows = Math.min(100, csvData.length);
+                for (let i = 0; i < maxRows; i++) {
+                    html += '<tr>';
+                    html += `<td style="background: #f5f5f5; font-weight: bold; padding: 2px 4px; border: 1px solid #ccc;">${i + 1}</td>`;
+                    
+                    headers.forEach((header, colIdx) => {
+                        if (selectedCols[colIdx]) {
+                            const value = csvData[i][colIdx];
+                            html += `<td style="padding: 2px 4px; border: 1px solid #ccc; background: #fffbea;">
+                                       <div class="annotatable-cell"
+                                            data-row-index="${i}" 
+                                            data-cell-index="${colIdx}"
+                                            contenteditable="false"
+                                            style="min-height: 16px; cursor: text;"
+                                            onmouseup="handleTextSelection(event, ${i}, ${colIdx})">${escapeHtml(value || '')}</div>
+                                     </td>`;
+                        } else {
+                            html += `<td style="padding: 2px 4px; border: 1px solid #ccc; color: #ccc;">-</td>`;
+                        }
+                    });
+                    html += '</tr>';
+                }
+            }
+            
+            html += '</tbody></table>';
+            html += '</div>';
+            
+            // Add text selection popup
+            html += `
+                <div id="textAnnotationPopup" style="display: none; position: fixed; background: white; border: 1px solid #333; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 1000;">
+                    <div id="selectedTextDisplay" style="margin-bottom: 10px; padding: 5px; background: #f0f0f0; max-width: 300px;"></div>
+                    <button onclick="applyTextAnnotation()" style="background: #28a745; color: white; border: none; padding: 5px 10px; margin-right: 5px;">Apply Tag</button>
+                    <button onclick="cancelTextAnnotation()" style="background: #dc3545; color: white; border: none; padding: 5px 10px;">Cancel</button>
+                </div>
+            `;
+            
+            view.innerHTML = html;
+        }
+        
+        let currentTextSelection = null;
+        let currentCellInfo = null;
+        
+        function handleTextSelection(event, rowIdx, cellIdx) {
+            const selection = window.getSelection();
+            const selectedText = selection.toString().trim();
+            
+            if (selectedText && selectedTag) {
+                // Keep the cell expanded while selecting
+                const cell = event.target.closest('td');
+                if (cell) {
+                    cell.classList.add('expanded');
+                }
+                
+                currentTextSelection = {
+                    text: selectedText,
+                    range: selection.getRangeAt(0),
+                    rowIdx: rowIdx,
+                    cellIdx: cellIdx,
+                    cellElement: cell
+                };
+                currentCellInfo = { rowIdx, cellIdx };
+                
+                // Show popup with better positioning for long text
+                const popup = document.getElementById('textAnnotationPopup');
+                const textDisplay = document.getElementById('selectedTextDisplay');
+                
+                // Truncate display if text is too long
+                const displayText = selectedText.length > 100 
+                    ? selectedText.substring(0, 100) + '...' 
+                    : selectedText;
+                textDisplay.textContent = `"${displayText}"`;
+                
+                popup.style.display = 'block';
+                
+                // Position popup to always be visible
+                const rect = event.target.getBoundingClientRect();
+                const popupHeight = 100; // Approximate height
+                
+                // Check if popup would go off screen bottom
+                if (event.clientY + popupHeight > window.innerHeight) {
+                    // Position above the selection
+                    popup.style.top = (event.pageY - popupHeight - 10) + 'px';
+                } else {
+                    // Position below the selection
+                    popup.style.top = (event.pageY + 10) + 'px';
+                }
+                
+                // Keep popup on screen horizontally
+                const popupWidth = 320;
+                if (event.clientX + popupWidth > window.innerWidth) {
+                    popup.style.left = (window.innerWidth - popupWidth - 20) + 'px';
+                } else {
+                    popup.style.left = event.pageX + 'px';
+                }
+            } else if (selectedText && !selectedTag) {
+                alert('Please select a tag first before selecting text');
+                selection.removeAllRanges();
+            }
+        }
+        
+        function applyTextAnnotation() {
+            if (!currentTextSelection || !selectedTag) return;
+            
+            try {
+                // Create a span element for the annotation
+                const span = document.createElement('span');
+                span.style.backgroundColor = selectedTag.color + '40';
+                span.style.borderBottom = `2px solid ${selectedTag.color}`;
+                span.style.padding = '0 2px';
+                span.setAttribute('data-tag', selectedTag.name);
+                span.setAttribute('data-tag-color', selectedTag.color);
+                span.className = 'annotated-text';
+                
+                // Wrap the selected text
+                currentTextSelection.range.surroundContents(span);
+                
+                // Store the annotation
+                const annotationKey = `${currentCellInfo.rowIdx}-${currentCellInfo.cellIdx}-${Date.now()}`;
+                annotations[annotationKey] = {
+                    tag: selectedTag.name,
+                    color: selectedTag.color,
+                    text: currentTextSelection.text,
+                    rowIdx: currentCellInfo.rowIdx,
+                    cellIdx: currentCellInfo.cellIdx,
+                    type: 'text'
+                };
+                
+            } catch(e) {
+                // For complex selections, extract and wrap the contents
+                const contents = currentTextSelection.range.extractContents();
+                const span = document.createElement('span');
+                span.style.backgroundColor = selectedTag.color + '40';
+                span.style.borderBottom = `2px solid ${selectedTag.color}`;
+                span.style.padding = '0 2px';
+                span.setAttribute('data-tag', selectedTag.name);
+                span.setAttribute('data-tag-color', selectedTag.color);
+                span.className = 'annotated-text';
+                span.appendChild(contents);
+                currentTextSelection.range.insertNode(span);
+                
+                // Store the annotation
+                const annotationKey = `${currentCellInfo.rowIdx}-${currentCellInfo.cellIdx}-${Date.now()}`;
+                annotations[annotationKey] = {
+                    tag: selectedTag.name,
+                    color: selectedTag.color,
+                    text: currentTextSelection.text,
+                    rowIdx: currentCellInfo.rowIdx,
+                    cellIdx: currentCellInfo.cellIdx,
+                    type: 'text'
+                };
+            }
+            
+            window.getSelection().removeAllRanges();
+            cancelTextAnnotation();
+        }
+        
+        function cancelTextAnnotation() {
+            // Remove expanded class from cell
+            if (currentTextSelection && currentTextSelection.cellElement) {
+                currentTextSelection.cellElement.classList.remove('expanded');
+            }
+            
+            document.getElementById('textAnnotationPopup').style.display = 'none';
+            currentTextSelection = null;
+            currentCellInfo = null;
+            window.getSelection().removeAllRanges();
+        }
+
+        function annotateCell(rowIdx, cellIdx, element) {
+            if (!selectedTag) {
+                alert('Please select a tag first');
+                return;
+            }
+            
+            const key = `${rowIdx}-${cellIdx}`;
+            if (annotations[key]) {
+                delete annotations[key];
+                element.style.backgroundColor = '';
+                element.classList.remove('annotated');
+            } else {
+                annotations[key] = {
+                    tag: selectedTag.name,
+                    color: selectedTag.color,
+                    value: element.textContent,
+                    row: rowIdx,
+                    cell: cellIdx
+                };
+                element.style.backgroundColor = selectedTag.color + '40';
+                element.classList.add('annotated');
+            }
+        }
+
+        function annotateItem(idx, element) {
+            if (!selectedTag) {
+                alert('Please select a tag first');
+                return;
+            }
+            
+            if (annotations[idx]) {
+                delete annotations[idx];
+                element.style.backgroundColor = '';
+                element.classList.remove('annotated');
+            } else {
+                annotations[idx] = {
+                    tag: selectedTag.name,
+                    color: selectedTag.color,
+                    data: selectedData[idx]
+                };
+                element.style.backgroundColor = selectedTag.color + '40';
+                element.classList.add('annotated');
+            }
+        }
+
+        // Tag Management
+        function initializeTags() {
+            // Create some default tags
+            tags = [
+                { name: 'Important', color: '#ff0000' },
+                { name: 'Review', color: '#ffa500' },
+                { name: 'Complete', color: '#00ff00' }
+            ];
+            updateTagDisplay();
+        }
+
+        function openTagModal() {
+            document.getElementById('tagModal').style.display = 'block';
+            displayExistingTags();
+        }
+
+        function closeTagModal() {
+            document.getElementById('tagModal').style.display = 'none';
+        }
+
+        function createTag() {
+            const name = document.getElementById('tagName').value;
+            const color = document.getElementById('tagColor').value;
+            
+            if (!name) {
+                alert('Please enter a tag name');
+                return;
+            }
+            
+            tags.push({ name, color });
+            document.getElementById('tagName').value = '';
+            updateTagDisplay();
+            displayExistingTags();
+        }
+
+        function updateTagDisplay() {
+            const tagList = document.getElementById('tagList');
+            tagList.innerHTML = '';
+            
+            tags.forEach((tag, idx) => {
+                const tagEl = document.createElement('div');
+                tagEl.className = 'tag';
+                tagEl.style.backgroundColor = tag.color + '20';
+                tagEl.style.borderColor = tag.color;
+                tagEl.textContent = tag.name;
+                tagEl.onclick = () => selectTag(tag, tagEl);
+                tagList.appendChild(tagEl);
+            });
+        }
+
+        function displayExistingTags() {
+            const existing = document.getElementById('existingTags');
+            existing.innerHTML = '<h4>Existing Tags:</h4>';
+            
+            if (tags.length === 0) {
+                existing.innerHTML += '<p>No tags created yet</p>';
+                return;
+            }
+            
+            tags.forEach((tag, index) => {
+                const tagDiv = document.createElement('div');
+                tagDiv.style.cssText = `padding: 8px; margin: 5px; background: ${tag.color}20; border: 1px solid ${tag.color}; display: flex; justify-content: space-between; align-items: center;`;
+                tagDiv.innerHTML = `
+                    <span>${tag.name}</span>
+                    <button onclick="deleteTag(${index})" style="background: red; color: white; border: none; padding: 3px 8px; cursor: pointer;">Delete</button>
+                `;
+                existing.appendChild(tagDiv);
+            });
+        }
+
+        function deleteTag(index) {
+            const tagName = tags[index].name;
+            if (confirm(`Delete tag "${tagName}"?`)) {
+                tags.splice(index, 1);
+                updateTagDisplay();
+                displayExistingTags();
+                
+                // Clear selection if deleted tag was selected
+                if (selectedTag && selectedTag.name === tagName) {
+                    selectedTag = null;
+                    document.querySelectorAll('.tag').forEach(t => t.classList.remove('selected'));
+                }
+            }
+        }
+
+        function selectTag(tag, element) {
+            document.querySelectorAll('.tag').forEach(t => t.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedTag = tag;
+        }
+
+        function clearAnnotations() {
+            annotations = {};
+            document.querySelectorAll('.annotated').forEach(el => {
+                el.style.backgroundColor = '';
+                el.classList.remove('annotated');
+            });
+        }
+
+        function saveAnnotations() {
+            if (Object.keys(annotations).length === 0) {
+                alert('No annotations to save');
+                return;
+            }
+            
+            document.getElementById('annotationSection').classList.add('hidden');
+            document.getElementById('exportSection').classList.remove('hidden');
+        }
+
+        // Export functions
+        function exportJSON() {
+            // Build complete annotated data
+            const exportData = {
+                metadata: {
+                    filename: document.getElementById('fileInput').files[0]?.name || 'unknown.csv',
+                    totalRows: csvData.length,
+                    headers: headers,
+                    exportDate: new Date().toISOString(),
+                    selectionMode: currentMode
+                },
+                originalData: {
+                    headers: headers,
+                    rows: csvData
+                },
+                selectedData: selectedData,
+                annotations: annotations,
+                tags: tags
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            downloadFile(blob, 'annotated_data.json');
+        }
+
+        function exportCSV() {
+            let csv = '';
+            
+            // Add headers
+            csv += headers.map(h => `"${h.replace(/"/g, '""')}"`).join(',') + '\n';
+            
+            if (currentMode === 'rows') {
+                // Export selected rows
+                selectedData.forEach(item => {
+                    if (item.data) {
+                        csv += item.data.map(cell => {
+                            const value = (cell || '').toString();
+                            // Escape quotes and wrap in quotes if contains comma, quote, or newline
+                            if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+                                return `"${value.replace(/"/g, '""')}"`;
+                            }
+                            return value;
+                        }).join(',') + '\n';
+                    }
+                });
+            } else if (currentMode === 'cells' || currentMode === 'range') {
+                // Group cells by row and export complete rows
+                const rowMap = {};
+                selectedData.forEach(item => {
+                    if (!rowMap[item.row]) {
+                        rowMap[item.row] = new Array(headers.length).fill('');
+                    }
+                    rowMap[item.row][item.col] = item.value || '';
+                });
+                
+                // Export rows with selected cells
+                Object.keys(rowMap).sort((a, b) => parseInt(a) - parseInt(b)).forEach(rowIdx => {
+                    csv += rowMap[rowIdx].map(cell => {
+                        const value = (cell || '').toString();
+                        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+                            return `"${value.replace(/"/g, '""')}"`;
+                        }
+                        return value;
+                    }).join(',') + '\n';
+                });
+            } else if (currentMode === 'columns') {
+                // Export all rows but only selected columns
+                const selectedColIndices = [];
+                selectedData.forEach(col => {
+                    const idx = headers.indexOf(col.header);
+                    if (idx !== -1) selectedColIndices.push(idx);
+                });
+                
+                // Export headers for selected columns
+                csv = selectedColIndices.map(idx => `"${headers[idx].replace(/"/g, '""')}"`).join(',') + '\n';
+                
+                // Export all rows with only selected columns
+                csvData.forEach(row => {
+                    csv += selectedColIndices.map(idx => {
+                        const value = (row[idx] || '').toString();
+                        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+                            return `"${value.replace(/"/g, '""')}"`;
+                        }
+                        return value;
+                    }).join(',') + '\n';
+                });
+            }
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            downloadFile(blob, 'selected_data.csv');
+        }
+
+        function exportAnnotationsOnly() {
+            const annotationData = {
+                metadata: {
+                    filename: document.getElementById('fileInput').files[0]?.name || 'unknown.csv',
+                    exportDate: new Date().toISOString(),
+                    totalAnnotations: Object.keys(annotations).length
+                },
+                annotations: annotations,
+                tags: tags,
+                annotatedCells: []
+            };
+            
+            // Extract unique cells that have annotations
+            const cellMap = {};
+            Object.values(annotations).forEach(ann => {
+                const cellKey = `${ann.rowIdx || ann.row}-${ann.cellIdx || ann.cell || ann.col}`;
+                if (!cellMap[cellKey]) {
+                    cellMap[cellKey] = {
+                        row: ann.rowIdx || ann.row,
+                        column: ann.cellIdx || ann.cell || ann.col,
+                        columnHeader: headers[ann.cellIdx || ann.cell || ann.col],
+                        annotations: []
+                    };
+                }
+                cellMap[cellKey].annotations.push({
+                    tag: ann.tag,
+                    text: ann.text || ann.value,
+                    type: ann.type || 'cell'
+                });
+            });
+            
+            annotationData.annotatedCells = Object.values(cellMap);
+            
+            const blob = new Blob([JSON.stringify(annotationData, null, 2)], { type: 'application/json' });
+            downloadFile(blob, 'annotations_only.json');
+        }
+
+        function downloadFile(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            document.getElementById('exportStatus').innerHTML = `<div class="status">File "${filename}" downloaded successfully!</div>`;
+        }
+
+        function startOver() {
+            location.reload();
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize with default tags
+            initializeTags();
+            
+            // Hide all sections except upload
+            document.getElementById('selectionSection').classList.add('hidden');
+            document.getElementById('reviewSection').classList.add('hidden');
+            document.getElementById('annotationSection').classList.add('hidden');
+            document.getElementById('exportSection').classList.add('hidden');
+            document.getElementById('tagPanel').classList.add('hidden');
+        });
+    </script>
+</body>
+</html>
